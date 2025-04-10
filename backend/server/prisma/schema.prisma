@@ -1,0 +1,203 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  iban      String   @default("IT00A0000000000000000000000")
+  currency  String   @default("€")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relazioni
+  accounts          Accounts[]
+  stocks            Stocks[]
+  transactions      Transactions[]
+  userGroup         UserGroup[]
+  categories        Categories[]
+  budgets           Budgets[]
+  goals             Goals[]
+  groupTransactions GroupTransactions[]
+  toNotifications   Notifications[]     @relation("ToNotifications")
+  fromNotifications Notifications[]     @relation("FromNotifications")
+}
+
+model Stocks {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  cryptoId        Int
+  amount          Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  valueWhenBought Float
+
+  // Relazioni
+  users  Users  @relation(fields: [userId], references: [id])
+  crypto Crypto @relation(fields: [cryptoId], references: [id])
+}
+
+model Crypto {
+  id          Int      @id @default(autoincrement())
+  name        String
+  image       String
+  actualValue Float
+  lastValue   Float    @default(0)
+  last1Value  Float    @default(0)
+  last2Value  Float    @default(0)
+  last3Value  Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  currency    String   @default("$")
+
+  // Relazioni
+  stocks Stocks[] // Corretto da Stock[] a Stocks[]
+}
+
+model Accounts {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  default   Boolean  @default(false)
+
+  // Relazioni
+  users        Users          @relation(fields: [userId], references: [id])
+  transactions Transactions[]
+  goals        Goals[]
+  budgets      Budgets[]
+}
+
+model Categories {
+  id        Int      @id @default(autoincrement())
+  name      String
+  userId    Int
+  image     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relazioni
+  transactions Transactions[]
+  users        Users          @relation(fields: [userId], references: [id])
+}
+
+model Transactions {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  accountId    Int
+  name         String   @default("Transaction")
+  amount       Float
+  categoryId   Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  transfer     Int?
+  bankTransfer Int?
+
+  // Relazioni
+  users      Users      @relation(fields: [userId], references: [id])
+  accounts   Accounts   @relation(fields: [accountId], references: [id])
+  categories Categories @relation(fields: [categoryId], references: [id])
+}
+
+model GroupTransactions {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  groupId       Int
+  name          String   @default("Transaction")
+  amount        Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  transactionId Int      @default(0)
+
+  // Relazioni
+  users  Users  @relation(fields: [userId], references: [id])
+  groups Groups @relation(fields: [groupId], references: [id])
+}
+
+model Budgets {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  accountId Int?
+  name      String   @default("MyBudget")
+  amount    Float
+  timeline  String
+  createdAt DateTime @default(now())
+
+  // Relazioni
+  users    Users     @relation(fields: [userId], references: [id])
+  accounts Accounts? @relation(fields: [accountId], references: [id])
+}
+
+model Goals {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  accountId Int?
+  name      String   @default("MyGoal")
+  amount    Float
+  timeline  String
+  createdAt DateTime @default(now())
+
+  // Relazioni
+  users    Users     @relation(fields: [userId], references: [id])
+  accounts Accounts? @relation(fields: [accountId], references: [id])
+}
+
+model UserGroup {
+  userId    Int
+  groupId   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isBoss    Boolean  @default(false)
+  payGroup  Boolean  @default(false)
+  color     String   @default("#000000")
+
+  // Relazioni
+  users  Users  @relation(fields: [userId], references: [id])
+  groups Groups @relation(fields: [groupId], references: [id])
+
+  // Definizione della chiave primaria composta
+  @@id([userId, groupId])
+}
+
+model Groups {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  currency  String   @default("€")
+
+  // Relazioni
+  userGroup         UserGroup[]
+  groupTransactions GroupTransactions[]
+  notifications     Notifications[]
+}
+
+model Notifications {
+  id          Int      @id @default(autoincrement())
+  toUserId    Int
+  message     String
+  read        Boolean  @default(false)
+  fromUserId  Int?
+  fromGroupId Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relazioni
+  users     Users   @relation(fields: [toUserId], references: [id], name: "ToNotifications")
+  groups    Groups? @relation(fields: [fromGroupId], references: [id])
+  fromUsers Users?  @relation(fields: [fromUserId], references: [id], name: "FromNotifications")
+}
+
+// npx prisma migrate dev --name database
+// npx prisma generate
